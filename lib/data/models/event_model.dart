@@ -1,5 +1,3 @@
-// lib/data/models/event_model.dart
-
 class EventModel {
   final String id;
   final String title;
@@ -22,7 +20,6 @@ class EventModel {
     this.isTrending = false,
   });
 
-  // Factory constructor to create an EventModel from a JSON map
   factory EventModel.fromJson(Map<String, dynamic> json) {
     return EventModel(
       id: json['id'] as String,

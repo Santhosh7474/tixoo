@@ -5,7 +5,6 @@ enum EventCategoryFilter {
   music,
   standup,
   poetry,
-  // Sports category removed
 }
 
 final categoryFilterProvider = StateProvider<EventCategoryFilter>(

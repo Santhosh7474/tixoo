@@ -1,11 +1,8 @@
-// lib/presentation/screens/event_detail_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tixoo/core/constants/app_colors.dart';
 import 'package:tixoo/data/models/event_model.dart';
 
-// --- Reusable Widget: Detail Info Row ---
 class DetailInfoRow extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -25,7 +22,6 @@ class DetailInfoRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Icon Container (Off-white background with green icon)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -36,7 +32,6 @@ class DetailInfoRow extends StatelessWidget {
           ),
           const SizedBox(width: 16),
           
-          // Title and Subtitle Text
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,7 +56,6 @@ class DetailInfoRow extends StatelessWidget {
             ),
           ),
           
-          // Forward Arrow Icon
           const Icon(
             Icons.arrow_forward,
             color: AppColors.greyText,
@@ -73,7 +67,6 @@ class DetailInfoRow extends StatelessWidget {
   }
 }
 
-// --- Event Detail Screen ---
 
 class EventDetailScreen extends ConsumerWidget {
   final EventModel event;
@@ -83,7 +76,6 @@ class EventDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      // Body uses Stack to place the scrolling content behind the persistent bottom bar
       body: Stack(
         children: [
           _buildDetailContent(context),
@@ -93,14 +85,11 @@ class EventDetailScreen extends ConsumerWidget {
     );
   }
   
-  // CustomScrollView for the main content and collapsing header
   Widget _buildDetailContent(BuildContext context) {
     return CustomScrollView(
       slivers: <Widget>[
-        // 1. Image Header (Sliver AppBar with collapsing effect)
         _buildSliverAppBar(context),
         
-        // 2. Main Content (Sliver List)
         SliverList(
           delegate: SliverChildListDelegate(
             [
@@ -109,7 +98,6 @@ class EventDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Event Title
                     Text(
                       event.title,
                       style: const TextStyle(
@@ -121,7 +109,6 @@ class EventDetailScreen extends ConsumerWidget {
                     
                     const SizedBox(height: 16),
 
-                    // Date and Time Rows
                     DetailInfoRow(
                       icon: Icons.calendar_today_outlined,
                       title: 'Date and Time',
@@ -131,12 +118,10 @@ class EventDetailScreen extends ConsumerWidget {
                     DetailInfoRow(
                       icon: Icons.location_on_outlined,
                       title: 'Venue and Location',
-                      // FIX: Using only event.location since subtitle is not in API
                       subtitle: event.location, 
                     ),
                     const Divider(color: AppColors.cardBackground, thickness: 1),
 
-                    // Detailed Description (Mock Content)
                     const SizedBox(height: 16),
                     const Text(
                       'About the Event',
@@ -156,7 +141,6 @@ class EventDetailScreen extends ConsumerWidget {
                       ),
                     ),
                     
-                    // Spacer to ensure content scrolls above the bottom bar
                     SizedBox(height: MediaQuery.of(context).padding.bottom + 100),
                   ],
                 ),
@@ -274,7 +258,6 @@ class EventDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            // Book Now Button
             ElevatedButton(
               onPressed: () {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -284,7 +267,7 @@ class EventDetailScreen extends ConsumerWidget {
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                     backgroundColor: AppColors.primaryGreen,
-                    behavior: SnackBarBehavior.floating, // To float above the persistent bar
+                    behavior: SnackBarBehavior.floating,
                     duration: const Duration(seconds: 3),
                   ),
                 );

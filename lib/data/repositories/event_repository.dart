@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tixoo/data/models/event_model.dart';
 
 class EventRepository {
-  // Live Mock API URL
   final String apiUrl = 'https://691488623746c71fe0489d47.mockapi.io/spotly/Events';
 
   Future<List<EventModel>> fetchEvents() async {
