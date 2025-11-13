@@ -1,33 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:tixoo/data/models/event_model.dart';
 import 'package:tixoo/data/repositories/event_repository.dart';
+import 'package:tixoo/presentation/providers/category_filter_provider.dart';
 
-// This class holds the logic for fetching and managing the list of events.
-class EventNotifier extends StateNotifier<AsyncValue<List<EventModel>>> {
-  
-  final EventRepository _repository;
+// 1. PROVIDER FOR RAW API DATA (Fetches once)
+final allEventsProvider = FutureProvider<List<EventModel>>((ref) async {
+  final repository = ref.watch(eventRepositoryProvider);
+  return repository.fetchEvents();
+});
 
-  EventNotifier(this._repository) : super(const AsyncValue.loading()) {
-    fetchEvents();
-  }
+// 2. PROVIDER FOR FILTERED EVENTS (Watches the raw data and the category filter)
+final filteredEventsProvider = FutureProvider<List<EventModel>>((ref) async {
+  final allEventsAsyncValue = ref.watch(allEventsProvider); 
+  final currentFilter = ref.watch(categoryFilterProvider);
 
-  // Uses the repository to make the API call
-  Future<void> fetchEvents() async {
-    try {
-      // Call the real API via the repository
-      final events = await _repository.fetchEvents(); 
+  return allEventsAsyncValue.when(
+    loading: () => const [], 
+    error: (err, stack) => throw err, 
+    data: (allEvents) {
+      if (currentFilter == EventCategoryFilter.all) {
+        return allEvents;
+      }
       
-      // Update state to success
-      state = AsyncValue.data(events); 
+      final filterString = currentFilter.name.toLowerCase(); 
       
-    } catch (e, st) {
-      // Handle API/Network errors
-      state = AsyncValue.error('Failed to load events: ${e.toString()}', st);
-    }
-  }
-}
-
-final eventProvider = StateNotifierProvider<EventNotifier, AsyncValue<List<EventModel>>>(
-  (ref) => EventNotifier(ref.watch(eventRepositoryProvider)),
-);
+      return allEvents
+          .where((event) => event.category.toLowerCase() == filterString)
+          .toList();
+    },
+  );
+});

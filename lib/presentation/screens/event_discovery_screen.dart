@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tixoo/core/constants/app_colors.dart';
 import 'package:tixoo/data/models/event_model.dart';
+import 'package:tixoo/presentation/providers/category_filter_provider.dart';
 import 'package:tixoo/presentation/providers/event_provider.dart';
 import 'package:tixoo/presentation/widgets/list_event_item.dart';
 import 'package:tixoo/presentation/widgets/trending_event_card.dart';
@@ -20,18 +21,19 @@ class EventDiscoveryScreen extends ConsumerWidget {
       '10 km Far Away',
       'Music',
     ];
-    final List<String> categoryTabs = ['Music', 'Standup', 'Poetry', 'Theatre'];
+    // REMOVED 'Sports' from categoryTabs
+    final List<String> categoryTabs = ['All', 'Music', 'Standup', 'Poetry'];
 
     return DefaultTabController(
       length: categoryTabs.length,
       child: Scaffold(
         body: CustomScrollView(
           slivers: <Widget>[
-            // 1. App Bar/Header (Scrolls Away - pinned: false)
+            // 1. App Bar/Header (Scrolls Away)
             _buildSliverAppBar(context),
 
-            // 2. Dark Category Tabs (Type Bar)
-            _buildDarkCategoryTabs(categoryTabs),
+            // 2. Dark Category Tabs (Type Bar - FIXED OVERFLOW)
+            _buildDarkCategoryTabs(context, ref, categoryTabs),
 
             // 3. Section Title: Trending This Week
             SliverToBoxAdapter(
@@ -42,7 +44,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
               ),
             ),
 
-            // 4. Trending This Week Section (uses PageView)
+            // 4. Trending This Week Section
             _buildTrendingSection(context, ref),
 
             // 5. Section Title: Artists on Tixoo
@@ -55,7 +57,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
             ),
 
             // 6. Artists on Tixoo Section (Square Cards)
-            _buildArtistsSection(),
+            _buildArtistsSection(context),
 
             // 7. Section Title: All Events
             SliverToBoxAdapter(
@@ -69,7 +71,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
             // 8. Filters (Chips)
             _buildFiltersSection(eventFilters),
 
-            // 9. All Events List (The main vertical list - calls provider)
+            // 9. All Events List (The main vertical list - uses filtered data)
             _buildAllEventsList(context, ref),
 
             // 10. Offers On Tixoo Section
@@ -92,7 +94,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
                 paddingAfter: 12,
               ),
             ),
-            _buildPromotersSection(),
+            _buildPromotersSection(context),
 
             const SliverToBoxAdapter(child: SizedBox(height: 60)),
           ],
@@ -101,7 +103,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
     );
   }
 
-  // --- Reusable Widgets and Methods ---
+  // --- Helper Methods ---
 
   Widget _buildSectionTitle(
     String title, {
@@ -146,7 +148,6 @@ class EventDiscoveryScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               const SizedBox(height: 8),
-              // 1. Location and Get Plus Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -215,7 +216,6 @@ class EventDiscoveryScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      // Profile Icon placeholder
                       const CircleAvatar(
                         radius: 18,
                         backgroundColor: AppColors.cardBackground,
@@ -225,7 +225,6 @@ class EventDiscoveryScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              // 2. Search Bar
               Container(
                 height: 50,
                 decoration: BoxDecoration(
@@ -250,7 +249,6 @@ class EventDiscoveryScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              // 3. Central Square Text
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -281,39 +279,93 @@ class EventDiscoveryScreen extends ConsumerWidget {
     );
   }
 
-  SliverToBoxAdapter _buildDarkCategoryTabs(List<String> categoryTabs) {
+  SliverToBoxAdapter _buildDarkCategoryTabs(
+    BuildContext context,
+    WidgetRef ref,
+    List<String> categoryTabs,
+  ) {
+    final currentFilter = ref.watch(categoryFilterProvider);
+    final setFilter = ref.read(categoryFilterProvider.notifier);
+
     return SliverToBoxAdapter(
       child: Center(
         child: Container(
-          height: 60,
+          // FIX: Reduced height to prevent 7.0px overflow
+          height: 58,
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: AppColors.darkCategory,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: TabBar(
-            indicatorColor: Colors.transparent,
-            dividerColor: Colors.transparent,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: categoryTabs.map((title) {
+              final filterEnum = _mapTitleToFilter(title);
+              final isSelected = currentFilter == filterEnum;
 
-            labelColor: AppColors.lightGreen,
-            unselectedLabelColor: Colors.white.withOpacity(0.7),
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            tabs: categoryTabs.map((title) {
-              return Tab(
-                iconMargin: EdgeInsets.zero,
-                icon: Icon(_getCategoryIcon(title), size: 18),
-                text: title,
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setFilter.state = filterEnum;
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.primaryGreen
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _getCategoryIcon(title),
+                          size: 18,
+                          color: isSelected
+                              ? AppColors.lightGreen
+                              : Colors.white.withOpacity(0.7),
+                        ),
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: isSelected
+                                ? AppColors.lightGreen
+                                : Colors.white.withOpacity(0.7),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               );
             }).toList(),
           ),
         ),
       ),
     );
+  }
+
+  EventCategoryFilter _mapTitleToFilter(String title) {
+    switch (title) {
+      case 'All':
+        return EventCategoryFilter.all;
+      case 'Music':
+        return EventCategoryFilter.music;
+      case 'Standup':
+        return EventCategoryFilter.standup;
+      case 'Poetry':
+        return EventCategoryFilter.poetry;
+      // Removed Sports mapping
+      default:
+        return EventCategoryFilter.all;
+    }
   }
 
   IconData _getCategoryIcon(String title) {
@@ -326,6 +378,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
         return Icons.favorite;
       case 'Theatre':
         return Icons.theater_comedy;
+      // Removed Sports Icon
       default:
         return Icons.category;
     }
@@ -335,12 +388,12 @@ class EventDiscoveryScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) {
-    final eventsAsync = ref.watch(eventProvider);
+    final eventsAsync = ref.watch(filteredEventsProvider);
 
     return eventsAsync.when(
       loading: () => const SliverToBoxAdapter(
         child: SizedBox(
-          height: 350,
+          height: 380,
           child: Center(
             child: CircularProgressIndicator(color: AppColors.primaryGreen),
           ),
@@ -348,7 +401,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
       ),
       error: (err, stack) => SliverToBoxAdapter(
         child: SizedBox(
-          height: 350,
+          height: 380,
           child: Center(
             child: Text(
               'Failed to load trending: ${err.toString()}',
@@ -362,8 +415,8 @@ class EventDiscoveryScreen extends ConsumerWidget {
 
         return SliverToBoxAdapter(
           child: SizedBox(
-            // FIX: Height increased to 350 to guarantee card fit (was 340)
-            height: 350,
+            // FIX: Height increased to prevent 23.0px overflow
+            height: 380,
             child: PageView.builder(
               controller: PageController(viewportFraction: 0.8),
               itemCount: trendingEvents.length > 0
@@ -389,96 +442,148 @@ class EventDiscoveryScreen extends ConsumerWidget {
     );
   }
 
-  SliverToBoxAdapter _buildArtistsSection() {
-    // Mock Artist Data defined above, or passed in if preferred.
+  SliverToBoxAdapter _buildArtistsSection(BuildContext context) {
     final List<Map<String, String>> mockArtists = [
-      {'name': 'Karan Aujla', 'image': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Karan_Aujla_2020.jpg/250px-Karan_Aujla_2020.jpg'},
-      {'name': 'Seedhe Maut', 'image': 'https://upload.wikimedia.org/wikipedia/commons/5/50/SeedheMaut%28SM%29.jpg'},
-      {'name': 'Arijit Singh', 'image': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Arijit_5th_GiMA_Awards.jpg/250px-Arijit_5th_GiMA_Awards.jpg'},
-      {'name': 'Diljit Dosanjh', 'image': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Diljit_Dosanjh.jpg/250px-Diljit_Dosanjh.jpg'},
-      {'name': 'Anirudh Ravichander', 'image': 'https://wallpaperbat.com/img/6938982-gallery-of-actor-anirudh-ravichander.jpg'},
-      {'name': 'Taylor Swift', 'image': 'https://charts-static.billboard.com/img/2006/12/taylor-swift-vug-artistchart-ko8-180x180.jpg?reload=1763009370153'},
-      {'name': 'Morgan Wallen', 'image': 'https://charts-static.billboard.com/img/2018/01/morgan-wallen-eos-artistchart-g3r-180x180.jpg?reload=1763009370153'},
-      {'name': 'Tyler, The Creator', 'image': 'https://charts-static.billboard.com/img/2011/12/tyler-the-creator-loo-artistchart-6iy-180x180.jpg?reload=1763009370153'},
-      {'name': 'Florence + The Machine', 'image': 'https://charts-static.billboard.com/img/2011/12/florence-the-machine-9p8-artistchart-w0z-180x180.jpg?reload=1763009370153'},
-      {'name': 'Sabrina Carpenter', 'image': 'https://charts-static.billboard.com/img/2014/08/sabrina-carpenter-l0r-artistchart-5os-180x180.jpg'},
-      // ... add all your artist data here
+      {
+        'name': 'Karan Aujla',
+        'image':
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/7/76/Karan_Aujla_2020.jpg/250px-Karan_Aujla_2020.jpg',
+      },
+      {
+        'name': 'Seedhe Maut',
+        'image':
+            'https://upload.wikimedia.org/wikipedia/commons/5/50/SeedheMaut%28SM%29.jpg',
+      },
+      {
+        'name': 'Arijit Singh',
+        'image':
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/Arijit_5th_GiMA_Awards.jpg/250px-Arijit_5th_GiMA_Awards.jpg',
+      },
+      {
+        'name': 'Diljit Dosanjh',
+        'image':
+            'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Diljit_Dosanjh.jpg/250px-Diljit_Dosanjh.jpg',
+      },
+      {
+        'name': 'Anirudh Ravichander',
+        'image':
+            'https://wallpaperbat.com/img/6938982-gallery-of-actor-anirudh-ravichander.jpg',
+      },
+      {
+        'name': 'Taylor Swift',
+        'image':
+            'https://charts-static.billboard.com/img/2006/12/taylor-swift-vug-artistchart-ko8-180x180.jpg?reload=1763009370153',
+      },
+      {
+        'name': 'Morgan Wallen',
+        'image':
+            'https://charts-static.billboard.com/img/2018/01/morgan-wallen-eos-artistchart-g3r-180x180.jpg?reload=1763009370153',
+      },
+      {
+        'name': 'Tyler, The Creator',
+        'image':
+            'https://charts-static.billboard.com/img/2011/12/tyler-the-creator-loo-artistchart-6iy-180x180.jpg?reload=1763009370153',
+      },
+      {
+        'name': 'Florence + The Machine',
+        'image':
+            'https://charts-static.billboard.com/img/2011/12/florence-the-machine-9p8-artistchart-w0z-180x180.jpg?reload=1763009370153',
+      },
+      {
+        'name': 'Sabrina Carpenter',
+        'image':
+            'https://charts-static.billboard.com/img/2014/08/sabrina-carpenter-l0r-artistchart-5os-180x180.jpg',
+      },
     ];
 
     return SliverToBoxAdapter(
-      child: Column(
-        children: [
-          SizedBox(
-            height: 150, // Height for square cards and text
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: mockArtists.length, 
-              itemBuilder: (context, index) {
-                final artist = mockArtists[index];
-                
-                return Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: AppColors.cardBackground, // Changed color to light background for image
-                          borderRadius: BorderRadius.circular(10), 
-                          border: Border.all(color: AppColors.background, width: 4), 
+      child: Center(
+        child: SizedBox(
+          height: 150,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: mockArtists.length,
+            itemBuilder: (context, index) {
+              final artist = mockArtists[index];
+              return Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: AppColors.cardBackground,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.background,
+                          width: 4,
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Stack(
-                            children: [
-                              // Image Placeholder / Network Image
-                              Image.network(
-                                artist['image']!, // Use the specific image URL
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                                loadingBuilder: (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Center(child: CircularProgressIndicator(color: AppColors.primaryGreen));
-                                },
-                                errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.person, color: AppColors.greyText)),
-                              ),
-                              
-                              // Like Button on Top Right
-                              const Align(
-                                alignment: Alignment.topRight,
-                                child: Padding(
-                                  padding: EdgeInsets.all(4.0),
-                                  child: Icon(Icons.favorite, color: AppColors.primaryGreen, size: 20),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Stack(
+                          children: [
+                            Image.network(
+                              artist['image']!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        color: AppColors.primaryGreen,
+                                      ),
+                                    );
+                                  },
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Center(
+                                    child: Icon(
+                                      Icons.person,
+                                      color: AppColors.greyText,
+                                    ),
+                                  ),
+                            ),
+
+                            const Align(
+                              alignment: Alignment.topRight,
+                              child: Padding(
+                                padding: EdgeInsets.all(4.0),
+                                child: Icon(
+                                  Icons.favorite,
+                                  color: AppColors.primaryGreen,
+                                  size: 20,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      // Artist Name
-                      Text(
-                        artist['name']!, 
-                        style: const TextStyle(fontSize: 13, color: AppColors.darkText),
-                        overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      artist['name']!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.darkText,
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-        ],
+        ),
       ),
     );
   }
-  }
 
   Widget _buildAllEventsList(BuildContext context, WidgetRef ref) {
-    final eventsAsync = ref.watch(eventProvider);
+    final eventsAsync = ref.watch(filteredEventsProvider);
 
     return eventsAsync.when(
       loading: () => const SliverToBoxAdapter(
@@ -504,7 +609,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
             child: Padding(
               padding: EdgeInsets.all(16.0),
               child: Text(
-                'No events found at the moment.',
+                'No events found for this filter.',
                 style: TextStyle(color: AppColors.greyText),
               ),
             ),
@@ -637,7 +742,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPromotersSection() {
+  Widget _buildPromotersSection(BuildContext context) {
     final List<PromoterModel> mockPromotersList = List.generate(
       4,
       (index) => PromoterModel(
@@ -660,7 +765,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final promoter = mockPromotersList[index];
                 return Container(
-                  width: 400,
+                  width: 350,
                   margin: const EdgeInsets.only(right: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -677,7 +782,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
                   child: Row(
                     children: [
                       Container(
-                        width: 100,
+                        width: 120,
                         // height: 0,
                         decoration: BoxDecoration(
                           color: AppColors.cardBackground, // Changed color to light background for image
@@ -731,7 +836,6 @@ class EventDiscoveryScreen extends ConsumerWidget {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // FIX 1: Wrap the rating display in Flexible.
                                 Flexible(
                                   child: Row(
                                     children: [
@@ -740,9 +844,7 @@ class EventDiscoveryScreen extends ConsumerWidget {
                                         color: Color(0xFFFFC107),
                                         size: 16,
                                       ),
-                                      // FIX 2: Reduce the horizontal gap to 2.0 (was 4.0) to save horizontal space.
                                       const SizedBox(width: 2),
-                                      // FIX 3: Wrap rating text in Expanded to ensure it yields.
                                       Expanded(
                                         child: Text(
                                           promoter.rating,
@@ -751,15 +853,13 @@ class EventDiscoveryScreen extends ConsumerWidget {
                                             color: AppColors.darkText,
                                             fontSize: 14,
                                           ),
-                                          maxLines: 1, // Prevent wrapping
-                                          overflow: TextOverflow
-                                              .clip, // Clip if absolutely necessary
+                                          maxLines: 1,
+                                          overflow: TextOverflow.clip,
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                // Explore More Button (This button is the one being pushed out)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
@@ -835,4 +935,4 @@ class EventDiscoveryScreen extends ConsumerWidget {
       ),
     );
   }
-
+}

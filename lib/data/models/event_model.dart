@@ -6,12 +6,9 @@ class EventModel {
   final String category;
   final String date;
   final String location;
-  final int price; // Changed to int
-  final String image; // Added image URL field
+  final int price; 
+  final String image; 
   
-  // Note: We'll manually determine if an event is "Trending" in the repository 
-  // or simply display all data and filter later. For simplicity, we'll keep 
-  // the trending logic in the presentation layer for now.
   final bool isTrending; 
 
   EventModel({
@@ -33,15 +30,14 @@ class EventModel {
       category: json['category'] as String,
       date: json['date'] as String,
       location: json['location'] as String,
-      price: json['price'] as int, // Parse as int
-      image: json['image'] as String, // Parse image URL
-      // Mock trending logic for display on the Tixoo Discovery screen
+      price: json['price'] as int,
+      image: json['image'] as String,
+      // MOCK LOGIC for Trending status
       isTrending: (json['category'] == 'Music' || json['category'] == 'Standup'), 
     );
   }
 }
 
-// PromoterModel remains the same (if used in other parts of the app)
 class PromoterModel {
   final String id;
   final String name;
